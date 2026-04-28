@@ -148,6 +148,24 @@ GET  /api/example-reservations/{reservationId}
 - 새 기능 구조가 `example_reservation`과 같은 흐름을 따르나요?
 - 에러 응답이 팀에서 이해할 수 있는 형태인가요?
 
+## Docker 사용 기준
+
+Docker는 팀원이 같은 환경에서 서버를 실행하기 위한 기본 실행 수단입니다.
+
+- `Dockerfile`은 애플리케이션 이미지를 만드는 기준 파일입니다.
+- `docker-compose.yml`은 로컬에서 서버를 쉽게 실행하기 위한 파일입니다.
+- `.dockerignore`는 이미지 빌드에 불필요한 파일을 제외합니다.
+- Docker 실행 시 `SPRING_PROFILES_ACTIVE=docker`를 사용합니다.
+- 비밀번호, 토큰, 운영 DB 주소 같은 민감 정보는 이미지나 Git에 넣지 않습니다.
+
+기본 실행:
+
+```bash
+docker compose up --build
+```
+
+Docker 설정을 바꿀 때는 README의 실행 방법도 함께 갱신합니다.
+
 ## 커밋 메시지 규칙
 
 커밋은 영어 한 줄로 간결하게 작성합니다.  

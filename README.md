@@ -10,6 +10,7 @@ Fedstock 백엔드 서버입니다.
 | Language | Java 21 |
 | Framework | Spring Boot 3.5.14 |
 | Build | Gradle Wrapper |
+| Container | Docker, Docker Compose |
 | Web | Spring Web |
 | Validation | Spring Validation |
 | Persistence | Spring Data JPA |
@@ -74,6 +75,29 @@ JDK 21이 필요합니다.
 ```bash
 curl http://localhost:8080/api/main/health
 ```
+
+## Docker 실행 방법
+
+Docker Desktop 또는 Docker Engine이 필요합니다.
+
+```bash
+docker compose up --build
+```
+
+백그라운드로 실행하려면 다음 명령을 사용합니다.
+
+```bash
+docker compose up --build -d
+```
+
+종료:
+
+```bash
+docker compose down
+```
+
+Docker 실행 시 `docker` 프로필이 적용됩니다.
+현재는 팀원이 바로 실행해볼 수 있도록 H2 인메모리 DB를 사용합니다.
 
 ## 예시 API
 
