@@ -118,7 +118,7 @@ docker compose up db -d
 서버 실행 후 Swagger UI에서 API를 확인합니다.
 
 ```text
-http://localhost:8080/swagger-ui
+http://localhost:8080/swagger-ui.html
 ```
 
 OpenAPI JSON:

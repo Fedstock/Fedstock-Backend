@@ -49,6 +49,9 @@ stock_order
 └── infrastructure
 ```
 
+현재 `demo` 패키지는 PostgreSQL, JPA, Swagger 연결을 확인하기 위한 샘플 CRUD입니다.
+실제 도메인 API와 ERD가 확정되면 `demo`는 참고용으로만 사용하거나 제거합니다.
+
 ## 계층별 작성 기준
 
 ### `api`
