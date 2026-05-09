@@ -77,25 +77,25 @@ Spring profile:
 ## Run with Docker
 
 ```bash
-docker compose up --build
+./run.sh up
 ```
 
 백그라운드 실행:
 
 ```bash
-docker compose up --build -d
+./run.sh up-bg
 ```
 
 종료:
 
 ```bash
-docker compose down
+./run.sh down
 ```
 
 PostgreSQL 데이터까지 삭제:
 
 ```bash
-docker compose down -v
+./run.sh clean
 ```
 
 ## Run Locally
@@ -109,8 +109,14 @@ JDK 21과 PostgreSQL이 필요합니다.
 Docker Compose로 DB만 먼저 실행하고 애플리케이션은 로컬에서 실행할 수도 있습니다.
 
 ```bash
-docker compose up db -d
-./gradlew bootRun
+./run.sh db
+./run.sh boot
+```
+
+테스트 실행:
+
+```bash
+./run.sh test
 ```
 
 ## API Docs
