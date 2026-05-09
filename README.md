@@ -72,7 +72,6 @@ Spring profile:
 | --- | --- |
 | `local` | 로컬 개발 |
 | `docker` | Docker Compose 실행 |
-| `test` | 테스트 실행 |
 
 ## Run with Docker
 
@@ -110,13 +109,7 @@ Docker Compose로 DB만 먼저 실행하고 애플리케이션은 로컬에서 �
 
 ```bash
 ./run.sh db
-./run.sh boot
-```
-
-테스트 실행:
-
-```bash
-./run.sh test
+./run.sh app
 ```
 
 ## API Docs

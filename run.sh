@@ -9,27 +9,27 @@ COMPOSE="docker compose"
 
 print_help() {
   cat <<'EOF'
-Fedstock Backend helper
+Fedstock Backend development helper
 
 Usage:
   ./run.sh <command>
 
 Commands:
   help        Show this help message
-  up          Build and run PostgreSQL + API
+  up          Build and run PostgreSQL + API for development
   up-bg       Build and run PostgreSQL + API in background
-  db          Run PostgreSQL only
+  app         Run Spring Boot locally
+  boot        Alias for app
+  db          Run PostgreSQL only for local app development
   down        Stop containers
   clean       Stop containers and remove volumes
   logs        Follow API and PostgreSQL logs
-  test        Run test suite with Gradle
-  boot        Run Spring Boot locally
   status      Show container status
 
 Examples:
   ./run.sh up
   ./run.sh db
-  ./run.sh boot
+  ./run.sh app
 EOF
 }
 
@@ -77,11 +77,7 @@ case "$cmd" in
     require_docker
     $COMPOSE logs -f
     ;;
-  test)
-    require_gradle_wrapper
-    ./gradlew test
-    ;;
-  boot)
+  app|boot)
     require_gradle_wrapper
     ./gradlew bootRun
     ;;
