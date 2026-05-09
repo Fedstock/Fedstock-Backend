@@ -1,17 +1,12 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:fedstock;MODE=MySQL;DATABASE_TO_UPPER=false
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:fedstock}
+    username: ${DB_USERNAME:fedstock}
+    password: ${DB_PASSWORD:fedstock}
+    driver-class-name: org.postgresql.Driver
   jpa:
-    open-in-view: false
     hibernate:
-      ddl-auto: update
+      ddl-auto: create-drop
     properties:
       hibernate:
         format_sql: true
