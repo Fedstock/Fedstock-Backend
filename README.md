@@ -37,6 +37,9 @@ client
 ## Project Structure
 
 ```text
+db
+└── init
+    └── 001_mvp_schema.sql
 src/main/java/com/fedstock/backend
 ├── main
 │   ├── api
@@ -52,6 +55,31 @@ src/main/java/com/fedstock/backend
     ├── application
     ├── domain
     └── infrastructure
+```
+
+## Database Schema
+
+PostgreSQL 초기 스키마와 테스트 데이터는 `db/init/001_mvp_schema.sql`에 있습니다.
+Docker Compose의 PostgreSQL 컨테이너는 이 폴더를 `/docker-entrypoint-initdb.d`로 마운트합니다.
+
+주의: PostgreSQL 공식 이미지의 init SQL은 DB 볼륨이 처음 만들어질 때만 실행됩니다.
+이미 `postgres-data` 볼륨이 있는 상태에서 스키마를 다시 먹이려면 아래처럼 볼륨까지 삭제한 뒤 다시 실행합니다.
+
+```bash
+./run.sh clean
+./run.sh up
+```
+
+현재 MVP 테이블:
+
+```text
+users
+stores
+store_members
+products
+inventory
+sales
+inventory_predictions
 ```
 
 ## Environment
