@@ -222,7 +222,7 @@ ON inventory_predictions(product_id, predicted_at DESC);
 
 INSERT INTO users (email, password_hash, name)
 VALUES
-('owner@example.com', 'hashed_password_example', '테스트 사장님');
+('owner@example.com', 'pbkdf2$120000$ZmVkc3RvY2stc2FtcGxlLTE=$QjKeaY9aCBGTSUg/FVsHvsb59/dhK39+om/VdAPSBco=', '테스트 사장님');
 
 INSERT INTO stores (name, business_type)
 VALUES
