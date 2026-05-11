@@ -33,3 +33,9 @@ springdoc:
     tags-sorter: alpha
   api-docs:
     path: /v3/api-docs
+
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:fedstock-local-development-secret-change-me}
+      expiration-hours: ${JWT_EXPIRATION_HOURS:24}
