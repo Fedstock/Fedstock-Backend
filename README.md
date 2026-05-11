@@ -1,7 +1,7 @@
 # Fedstock Backend
 
 Fedstock 서비스의 백엔드 API 서버입니다.
-현재 단계는 실제 도메인 API와 ERD가 확정되기 전, 팀원이 같은 환경에서 개발을 시작할 수 있도록 기본 서버, DB 연결, 문서화, 샘플 CRUD를 준비하는 단계입니다.
+현재 단계는 MVP 도메인 API를 빠르게 붙여 프론트엔드와 데이터 흐름을 맞출 수 있도록 구성한 상태입니다.
 
 ## Tech Stack
 
@@ -41,8 +41,34 @@ db
 └── init
     └── 001_mvp_schema.sql
 src/main/java/com/fedstock/backend
+├── auth
+│   ├── api
+│   │   └── dto
+│   ├── application
+│   └── infrastructure
+├── store
+│   ├── api
+│   │   └── dto
+│   ├── application
+│   └── infrastructure
+├── product
+│   ├── api
+│   │   └── dto
+│   ├── application
+│   └── infrastructure
+├── sale
+│   ├── api
+│   │   └── dto
+│   ├── application
+│   └── infrastructure
+├── prediction
+│   ├── api
+│   │   └── dto
+│   ├── application
+│   └── infrastructure
 ├── main
 │   ├── api
+│   ├── config
 │   └── error
 ├── demo
 │   ├── api
@@ -82,6 +108,13 @@ sales
 inventory_predictions
 ```
 
+샘플 계정:
+
+```text
+email: owner@example.com
+password: password12
+```
+
 ## Environment
 
 로컬 실행 기본값은 `.env.example`과 같습니다.
@@ -92,6 +125,8 @@ DB_PORT=5432
 DB_NAME=fedstock
 DB_USERNAME=fedstock
 DB_PASSWORD=fedstock
+JWT_SECRET=fedstock-local-development-secret-change-me
+JWT_EXPIRATION_HOURS=24
 ```
 
 Spring profile:
@@ -166,9 +201,57 @@ Actuator health:
 curl http://localhost:8080/actuator/health
 ```
 
+## MVP API
+
+인증이 필요한 API는 `Authorization: Bearer {token}` 헤더를 사용합니다.
+회원가입 또는 로그인 응답의 `token`을 그대로 전달하면 됩니다.
+
+```bash
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "owner@example.com",
+    "password": "password12"
+  }'
+```
+
+구현된 API:
+
+```text
+GET    /health
+POST   /api/auth/register
+POST   /api/auth/login
+GET    /api/auth/me
+
+GET    /api/stores
+POST   /api/stores
+GET    /api/stores/{storeId}
+PATCH  /api/stores/{storeId}
+GET    /api/stores/{storeId}/members
+POST   /api/stores/{storeId}/members
+
+GET    /api/stores/{storeId}/products
+POST   /api/stores/{storeId}/products
+GET    /api/stores/{storeId}/products/{productId}
+PATCH  /api/stores/{storeId}/products/{productId}
+PUT    /api/stores/{storeId}/products/{productId}/inventory
+
+POST   /api/stores/{storeId}/sales
+GET    /api/stores/{storeId}/sales
+
+GET    /api/stores/{storeId}/predictions/latest
+GET    /api/stores/{storeId}/predictions
+POST   /api/stores/{storeId}/predictions
+```
+
+권한 기준:
+
+- 매장 조회, 상품, 재고, 판매, 예측 조회: 매장 멤버 `OWNER` 또는 `STAFF`
+- 매장 수정, 멤버 추가, 예측 생성: `OWNER`
+
 ## Demo API
 
-실제 ERD와 도메인 API가 확정되기 전까지 서버 동작, DB 연결, Swagger 문서화를 확인하기 위한 샘플 CRUD입니다.
+서버 동작, DB 연결, Swagger 문서화를 확인하기 위한 샘플 CRUD입니다.
 
 ```bash
 curl -X POST http://localhost:8080/api/demos \
@@ -212,8 +295,6 @@ docs: update backend readme
 
 실제 API 개발 전 필요한 결정 사항:
 
-- ERD 확정
-- 도메인별 API 명세 확정
 - 인증/인가 방식 확정
 - 운영 DB 계정 및 배포 환경 변수 분리
 - 마이그레이션 도구 적용 여부 결정
