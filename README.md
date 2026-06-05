@@ -1,7 +1,8 @@
 # Fedstock Backend
 
 Fedstock 서비스의 백엔드 API 서버입니다.
-현재 단계는 MVP 도메인 API를 빠르게 붙여 프론트엔드와 데이터 흐름을 맞출 수 있도록 구성한 상태입니다.
+실제 매장 운영 서비스를 가정해 만든 포트폴리오 MVP이며, 현재 단계는 프론트엔드 API와 AI 서버 Gateway 역할을 중심으로 구성했습니다.
+사용자 흐름, AI 분석 연동, 컨테이너 배포 구조를 빠르게 검증하는 데 초점을 두고 있으며, 인증/인가와 운영 보안 정책은 MVP 범위 밖으로 두었습니다.
 
 ## Tech Stack
 
@@ -33,6 +34,8 @@ client
 
 기능별 패키지를 하나의 작은 모듈처럼 관리하고, 각 기능 내부에서 요청 처리, 유스케이스, 도메인 규칙, 기술 구현을 분리합니다.
 자세한 폴더링과 코드 작성 규칙은 [docs/CONVENTION.md](docs/CONVENTION.md)를 확인합니다.
+
+현재 API는 데모 가능한 서비스 흐름을 우선해 공개 엔드포인트로 구성되어 있습니다. 실제 운영 전환 시에는 Spring Security와 권한 모델을 추가하는 것을 전제로 합니다.
 
 ## Project Structure
 
@@ -70,6 +73,27 @@ src/main/java/com/fedstock/backend
 │   ├── api
 │   ├── config
 │   └── error
+├── v1
+│   ├── ai
+│   │   ├── api
+│   │   └── application
+│   ├── auth
+│   │   └── api
+│   ├── forecast
+│   │   ├── api
+│   │   ├── application
+│   │   └── infrastructure
+│   ├── item
+│   │   ├── api
+│   │   └── application
+│   ├── localai
+│   │   ├── api
+│   │   └── application
+│   ├── shared
+│   │   └── ai
+│   └── weather
+│       ├── api
+│       └── application
 ├── demo
 │   ├── api
 │   │   └── dto
@@ -125,8 +149,7 @@ DB_PORT=5432
 DB_NAME=fedstock
 DB_USERNAME=fedstock
 DB_PASSWORD=fedstock
-JWT_SECRET=fedstock-local-development-secret-change-me
-JWT_EXPIRATION_HOURS=24
+AI_BACKEND_URL=http://localhost:8000
 ```
 
 Spring profile:
@@ -135,6 +158,21 @@ Spring profile:
 | --- | --- |
 | `local` | 로컬 개발 |
 | `docker` | Docker Compose 실행 |
+| `prod` | ECS/RDS 운영 실행 |
+
+운영 ECS 환경은 아래 값을 컨테이너 환경변수 또는 secret으로 주입합니다.
+
+```text
+SPRING_PROFILES_ACTIVE=prod
+AWS_REGION=ap-northeast-2
+ARTIFACT_BUCKET=<artifact-bucket>
+DB_HOST=<rds-endpoint>
+DB_PORT=5432
+DB_NAME=app
+DB_USERNAME=app
+DB_PASSWORD=<secret>
+AI_BACKEND_URL=http://<alb-dns>/ai
+```
 
 ## Run with Docker
 
@@ -201,83 +239,281 @@ Actuator health:
 curl http://localhost:8080/actuator/health
 ```
 
-## MVP API
+## V1 API
 
-인증이 필요한 API는 `Authorization: Bearer {token}` 헤더를 사용합니다.
-회원가입 또는 로그인 응답의 `token`을 그대로 전달하면 됩니다.
-
-```bash
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "owner@example.com",
-    "password": "password12"
-  }'
-```
-
-구현된 API:
+프론트엔드 연동용 v1 API입니다. 포트폴리오 MVP 단계에서는 시연과 AI 연동 검증을 우선해 모든 API를 별도 인증 절차 없이 호출합니다.
+로그인 API는 화면 흐름과 매장 정보 응답을 맞추기 위한 형태로 유지하며, 실제 사용자 인증 수단으로 사용하지 않습니다.
 
 ```text
-GET    /health
-POST   /api/auth/register
-POST   /api/auth/login
-GET    /api/auth/me
-
-GET    /api/stores
-POST   /api/stores
-GET    /api/stores/{storeId}
-PATCH  /api/stores/{storeId}
-GET    /api/stores/{storeId}/members
-POST   /api/stores/{storeId}/members
-
-GET    /api/stores/{storeId}/products
-POST   /api/stores/{storeId}/products
-GET    /api/stores/{storeId}/products/{productId}
-PATCH  /api/stores/{storeId}/products/{productId}
-PUT    /api/stores/{storeId}/products/{productId}/inventory
-
-POST   /api/stores/{storeId}/sales
-GET    /api/stores/{storeId}/sales
-
-GET    /api/stores/{storeId}/predictions/latest
-GET    /api/stores/{storeId}/predictions
-POST   /api/stores/{storeId}/predictions
+1. POST /api/v1/auth/login
+2. GET  /api/v1/auth/me
+3. POST /api/v1/auth/logout
+4. GET  /api/v1/ai/health
+5. POST /api/v1/ai/analyze-csv
+6. POST /api/v1/ai/clients/register
+7. GET  /api/v1/ai/clients/{clientId}/fl-model
+8. GET  /api/v1/local-ai/health
+9. POST /api/v1/forecast/analyze-csv
+10. GET /api/v1/forecast/results/{analysisId}
+11. GET /api/v1/forecast/results/{analysisId}/products/{itemId}/chart
+12. GET /api/v1/forecast/results/{analysisId}/top-products
+13. GET /api/v1/forecast/results/{analysisId}/flow-change
+14. GET /api/v1/weather/insight
+15. GET /api/v1/items/display-map
 ```
 
-권한 기준:
+### 1. 로그인
 
-- 매장 조회, 상품, 재고, 판매, 예측 조회: 매장 멤버 `OWNER` 또는 `STAFF`
-- 매장 수정, 멤버 추가, 예측 생성: `OWNER`
-
-## Demo API
-
-서버 동작, DB 연결, Swagger 문서화를 확인하기 위한 샘플 CRUD입니다.
-
-```bash
-curl -X POST http://localhost:8080/api/demos \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "first demo",
-    "content": "demo content"
-  }'
+```http
+POST /api/v1/auth/login
 ```
 
-```bash
-curl http://localhost:8080/api/demos
-curl http://localhost:8080/api/demos/1
+```json
+{
+  "storeId": "owner@example.com",
+  "password": "password12"
+}
 ```
 
-```bash
-curl -X PUT http://localhost:8080/api/demos/1 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "updated demo",
-    "content": "updated content"
-  }'
+응답:
+
+```json
+{
+  "store": {
+    "storeId": "owner@example.com",
+    "storeName": "Owner",
+    "role": "STORE_MANAGER"
+  }
+}
 ```
 
-```bash
-curl -X DELETE http://localhost:8080/api/demos/1
+### 2. 내 로그인 정보 조회
+
+```http
+GET /api/v1/auth/me
+```
+
+응답:
+
+```json
+{
+  "storeId": "owner@example.com",
+  "storeName": "Owner",
+  "role": "STORE_MANAGER"
+}
+```
+
+### 3. 로그아웃
+
+```http
+POST /api/v1/auth/logout
+```
+
+응답:
+
+```json
+{
+  "success": true
+}
+```
+
+### 4. AI 서버 상태 확인
+
+AI Gateway API입니다. 프론트엔드는 아래 API를 호출하고, 백엔드는 `AI_BACKEND_URL` 기준으로 AI 서버의 `/health`에 요청을 전달합니다.
+
+```http
+GET /api/v1/ai/health
+```
+
+AI 서버 응답 예시:
+
+```json
+{
+  "ok": true,
+  "time": "2026-06-04 12:00:00",
+  "summary": {
+    "referenceRunDir": "/path/to/reference_run",
+    "storageDir": "/path/to/storage",
+    "selectedFeatures": [
+      "lag_7",
+      "lag_14",
+      "rolling_mean_7"
+    ],
+    "clientCount": 48,
+    "bubbleCount": 5,
+    "isolatedCount": 3,
+    "aggregatedModelCount": 2
+  }
+}
+```
+
+### 5. CSV AI 분석
+
+AI Gateway API입니다. 프론트엔드는 CSV 파일을 보내고, 백엔드는 `AI_BACKEND_URL` 기준으로 AI 서버의 `/analyze-csv`에 `multipart/form-data` 요청을 전달합니다.
+
+```http
+POST /api/v1/ai/analyze-csv
+Content-Type: multipart/form-data
+```
+
+Form fields:
+
+```text
+file=sales.csv
+```
+
+AI 서버 응답 예시:
+
+```json
+{
+  "status": {
+    "state": "loaded",
+    "fileName": "sales.csv",
+    "rowCount": 1234,
+    "productCount": 20,
+    "dateRange": "2026. 05. 01. - 2026. 05. 31.",
+    "uploadedAt": "2026. 06. 01. 18:30:12",
+    "validation": [],
+    "issues": []
+  },
+  "data": {
+    "source": "ai",
+    "overviewMetrics": [],
+    "salesTrend": [],
+    "topProducts": [],
+    "forecastSeries": [],
+    "inventoryMetrics": [],
+    "inventoryItems": [],
+    "orderMetrics": [],
+    "orderRecommendations": []
+  },
+  "model": {
+    "paths": [],
+    "modelCount": 1,
+    "selectedFeatures": [],
+    "sequenceLength": 14,
+    "stockAvailable": true
+  }
+}
+```
+
+### 6. AI Client 등록
+
+AI Gateway API입니다. 프론트엔드는 모델/importance 정보를 보내고, 백엔드는 `AI_BACKEND_URL` 기준으로 AI 서버의 `/clients/register`에 `multipart/form-data` 요청을 전달합니다.
+
+```http
+POST /api/v1/ai/clients/register
+Content-Type: multipart/form-data
+```
+
+Form fields:
+
+```text
+client_id=NEW_CLIENT_01
+model_file=client_NEW_CLIENT_01.pt
+importance_file=NEW_CLIENT_01_importance.json
+importance_json={"noisyImportance":[0.12,0.03,0.55,0.07]}
+sample_weight=10
+```
+
+`importance_file` 또는 `importance_json` 중 하나는 반드시 필요합니다.
+
+### 7. AI Client FL Model 다운로드
+
+AI Gateway API입니다. 백엔드는 `AI_BACKEND_URL` 기준으로 AI 서버의 `/clients/{client_id}/fl-model`을 호출하고, PyTorch 모델 binary stream을 그대로 반환합니다.
+
+```http
+GET /api/v1/ai/clients/{clientId}/fl-model
+```
+
+응답 헤더:
+
+```text
+Content-Type: application/octet-stream
+Content-Disposition: attachment; filename="client_{client_id}_FL.pt"
+```
+
+### 8. 로컬 AI 서버 상태 확인 Legacy
+
+```http
+GET /api/v1/local-ai/health
+```
+
+백엔드는 `AI_BACKEND_URL` 기준으로 AI 서버의 `/health`를 확인합니다.
+
+### 9. CSV 업로드 및 판매량 예측 실행 Legacy
+
+```http
+POST /api/v1/forecast/analyze-csv
+Content-Type: multipart/form-data
+```
+
+Form fields:
+
+```text
+file=sales_history.csv
+storeId=owner@example.com
+```
+
+백엔드는 `AI_BACKEND_URL` 기준으로 AI 서버의 `/analyze-csv`를 호출하고, 응답의 `analysisId`로 결과를 임시 저장합니다.
+
+### 10. 예측 결과 상세 조회
+
+```http
+GET /api/v1/forecast/results/{analysisId}
+```
+
+### 11. 상품별 일별 예측 그래프 조회
+
+```http
+GET /api/v1/forecast/results/{analysisId}/products/{itemId}/chart
+```
+
+### 12. 상위 판매 예상 상품 조회
+
+```http
+GET /api/v1/forecast/results/{analysisId}/top-products?limit=8
+```
+
+### 13. 최근 판매 흐름 변화율 조회
+
+```http
+GET /api/v1/forecast/results/{analysisId}/flow-change?limit=10
+```
+
+### 14. 날씨 기반 운영 인사이트 조회
+
+```http
+GET /api/v1/weather/insight?location=서울특별시%20동작구
+```
+
+Query parameters:
+
+```text
+location  optional, default 서울특별시 동작구
+latitude  optional
+longitude optional
+```
+
+### 15. 상품 표시명 매핑 조회
+
+```http
+GET /api/v1/items/display-map?itemIds=FOODS_3_090,FOODS_3_586
+```
+
+응답:
+
+```json
+{
+  "items": [
+    {
+      "itemId": "FOODS_3_090",
+      "itemName": "식품 FOODS_3_090",
+      "category": "식품",
+      "mappingSource": "ITEM_MASTER"
+    }
+  ]
+}
 ```
 
 ## Commit Convention
@@ -290,11 +526,3 @@ feat: add demo crud api
 fix: handle demo not found
 docs: update backend readme
 ```
-
-## Before Real Domain Work
-
-실제 API 개발 전 필요한 결정 사항:
-
-- 인증/인가 방식 확정
-- 운영 DB 계정 및 배포 환경 변수 분리
-- 마이그레이션 도구 적용 여부 결정

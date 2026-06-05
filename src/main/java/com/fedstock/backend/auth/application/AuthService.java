@@ -15,16 +15,13 @@ public class AuthService {
 
     private final UserJpaRepository userRepository;
     private final PasswordHashService passwordHashService;
-    private final JwtService jwtService;
 
     public AuthService(
         UserJpaRepository userRepository,
-        PasswordHashService passwordHashService,
-        JwtService jwtService
+        PasswordHashService passwordHashService
     ) {
         this.userRepository = userRepository;
         this.passwordHashService = passwordHashService;
-        this.jwtService = jwtService;
     }
 
     @Transactional
@@ -67,6 +64,6 @@ public class AuthService {
 
     private AuthResult result(UserEntity user) {
         UserPrincipal principal = new UserPrincipal(user.getId(), user.getEmail(), user.getName());
-        return new AuthResult(jwtService.issue(user.getId(), user.getEmail()), principal);
+        return new AuthResult(principal);
     }
 }
