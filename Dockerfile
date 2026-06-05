@@ -1,26 +1,25 @@
 # syntax=docker/dockerfile:1
 
-FROM eclipse-temurin:21-jdk AS build
-
-WORKDIR /workspace
-
-COPY gradlew settings.gradle build.gradle ./
-COPY gradle ./gradle
-
-RUN chmod +x gradlew && ./gradlew dependencies --no-daemon
-
-COPY src ./src
-
-RUN ./gradlew clean bootJar -x test --no-daemon
-
-FROM eclipse-temurin:21-jre
-
+FROM gradle:8.14.3-jdk21-alpine AS build
 WORKDIR /app
 
+COPY build.gradle settings.gradle ./
+COPY gradle ./gradle
+COPY src ./src
+
+RUN gradle clean bootJar --no-daemon
+
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+
+COPY --from=build /app/build/libs/*.jar app.jar
+
+ENV JAVA_OPTS=""
 ENV SPRING_PROFILES_ACTIVE=docker
 
 EXPOSE 8080
 
-COPY --from=build /workspace/build/libs/*.jar app.jar
+HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
+  CMD wget -q -O /dev/null http://localhost:8080/health || exit 1
 
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

@@ -1,4 +1,6 @@
 .git/
+.gitignore
+.gitattributes
 .gradle/
 build/
 out/
@@ -19,3 +21,11 @@ logs/
 
 .DS_Store
 Thumbs.db
+
+README.md
+HELP.md
+docs/
+docker-compose.yml
+run.sh
+gradlew
+gradlew.bat
