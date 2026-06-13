@@ -34,6 +34,8 @@ services:
       DB_NAME: fedstock
       DB_USERNAME: fedstock
       DB_PASSWORD: fedstock
+      ARTIFACT_BUCKET: ${ARTIFACT_BUCKET:-}
+      S3_ADMIN_PASSWORD: ${S3_ADMIN_PASSWORD:-22}
       TZ: Asia/Seoul
     depends_on:
       db:

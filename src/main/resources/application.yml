@@ -29,3 +29,9 @@ springdoc:
 jwt:
   secret: ${JWT_SECRET:dev-temp-secret-key-only-for-local-development-please-change-this-1234567890}
   access-token-expiration-ms: 3600000
+
+storage:
+  s3:
+    bucket: ${ARTIFACT_BUCKET:}
+    region: ${AWS_REGION:ap-northeast-2}
+    admin-password: ${S3_ADMIN_PASSWORD:22}

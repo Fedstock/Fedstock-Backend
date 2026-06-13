@@ -99,6 +99,8 @@ DB_NAME=fedstock
 DB_USERNAME=fedstock
 DB_PASSWORD=fedstock
 AI_BACKEND_URL=http://localhost:8000
+ARTIFACT_BUCKET=
+S3_ADMIN_PASSWORD=22
 ```
 
 Spring profile:
@@ -115,6 +117,7 @@ Spring profile:
 SPRING_PROFILES_ACTIVE=prod
 AWS_REGION=ap-northeast-2
 ARTIFACT_BUCKET=<artifact-bucket>
+S3_ADMIN_PASSWORD=<secret>
 DB_HOST=<rds-endpoint>
 DB_PORT=5432
 DB_NAME=app
@@ -194,6 +197,8 @@ http://localhost:8080/v3/api-docs
 5. POST /api/auth/logout
 6. POST /api/ai/clients/cluster-assignment
 7. POST /api/ai/clients/{clientId}/fl-model
+8. POST /api/admin/s3/objects
+9. POST /api/admin/s3/objects/delete-all
 ```
 
 `/api/auth/signup`, `/api/auth/login`은 인증 없이 호출합니다.
@@ -291,6 +296,42 @@ Spring은 토큰을 확인하고, path/body `client_id` 일치, 등록된 `clien
 `all_clients`는 DB 큐에 저장하고 전체 등록 유저 수만큼 같은 `round_id`가 모이면 AI 레포의 `/clients/fl-model/batch`로 한 번에 전달합니다.
 
 상세 데모 명세는 [`docs/ai-proxy-api-spec.md`](/Users/kento/Desktop/Project/fedstock/Fedstock-Backend/docs/ai-proxy-api-spec.md)를 봅니다.
+
+### S3 저장소 확인
+
+Swagger에서 JWT를 넣고 아래 body로 호출합니다. 로컬 기본값은 `22`이고, 운영은 `S3_ADMIN_PASSWORD` 환경변수 값과 일치해야 합니다.
+
+```http
+POST /api/admin/s3/objects
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+```
+
+```json
+{
+  "pw": "22"
+}
+```
+
+응답은 `ARTIFACT_BUCKET`의 객체 목록, 개수, 총 byte 크기를 반환합니다.
+
+### S3 저장소 전체 삭제
+
+`ARTIFACT_BUCKET` 안의 object version과 delete marker까지 삭제합니다.
+
+```http
+POST /api/admin/s3/objects/delete-all
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+```
+
+```json
+{
+  "pw": "22"
+}
+```
+
+운영 IAM에는 최소 `s3:ListBucket`, `s3:ListBucketVersions`, `s3:DeleteObject`, `s3:DeleteObjectVersion` 권한이 필요합니다.
 
 ## Commit Convention
 

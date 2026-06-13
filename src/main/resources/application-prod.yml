@@ -18,3 +18,9 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET}
+
+storage:
+  s3:
+    bucket: ${ARTIFACT_BUCKET}
+    region: ${AWS_REGION}
+    admin-password: ${S3_ADMIN_PASSWORD}
