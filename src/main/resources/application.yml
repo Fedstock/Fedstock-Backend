@@ -12,19 +12,11 @@ spring:
         format_sql: false
         jdbc:
           time_zone: Asia/Seoul
+  flyway:
+    enabled: false
 
 server:
   port: 8080
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
-  endpoint:
-    health:
-      probes:
-        enabled: true
 
 springdoc:
   swagger-ui:
@@ -34,8 +26,6 @@ springdoc:
   api-docs:
     path: /v3/api-docs
 
-app:
-  security:
-    jwt:
-      secret: ${JWT_SECRET:fedstock-local-development-secret-change-me}
-      expiration-hours: ${JWT_EXPIRATION_HOURS:24}
+jwt:
+  secret: ${JWT_SECRET:dev-temp-secret-key-only-for-local-development-please-change-this-1234567890}
+  access-token-expiration-ms: 3600000

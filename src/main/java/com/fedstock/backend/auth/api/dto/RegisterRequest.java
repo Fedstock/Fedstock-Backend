@@ -10,6 +10,14 @@ public record RegisterRequest(
     String email,
 
     @NotBlank
+    @Size(max = 100)
+    String storeId,
+
+    @NotBlank
+    @Size(max = 255)
+    String username,
+
+    @NotBlank
     @Size(min = 8)
     String password,
 

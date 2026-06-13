@@ -5,6 +5,7 @@ import java.util.NoSuchElementException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -45,5 +46,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity
             .badRequest()
             .body(ApiErrorResponse.of("INVALID_REQUEST", "Request body is invalid."));
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuthenticationException(AuthenticationException exception) {
+        return ResponseEntity
+            .status(HttpStatus.UNAUTHORIZED)
+            .body(ApiErrorResponse.of("UNAUTHORIZED", "Email or password is invalid."));
     }
 }
