@@ -54,6 +54,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/ai/clients/cluster-assignment").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/ai/clients/*/fl-model").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/ai/clients/*/fl-model").authenticated()
                 .anyRequest().authenticated()
             )

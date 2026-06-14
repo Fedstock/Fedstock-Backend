@@ -3,6 +3,7 @@ package com.fedstock.backend.ai.api;
 import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -39,5 +40,10 @@ public class AiClientSyncController {
         @RequestParam("model_file") MultipartFile modelFile
     ) {
         return aiClientSyncService.syncFlModel(clientId, bodyClientId, scope, roundId, sampleWeight, modelFile);
+    }
+
+    @GetMapping("/{clientId}/fl-model")
+    public ResponseEntity<?> downloadFlModel(@PathVariable("clientId") String clientId) {
+        return aiClientSyncService.downloadFlModel(clientId);
     }
 }

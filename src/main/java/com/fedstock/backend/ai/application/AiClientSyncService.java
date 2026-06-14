@@ -152,6 +152,11 @@ public class AiClientSyncService {
         }
     }
 
+    public ResponseEntity<?> downloadFlModel(String clientId) {
+        validateKnownClient(clientId);
+        return aiBackendClient.downloadFlModel(clientId);
+    }
+
     private void validateClusterAssignment(ClusterAssignmentRequest request) {
         validateScope(request.scope());
         if (request.featureNames().size() != request.featureImportance().size()) {

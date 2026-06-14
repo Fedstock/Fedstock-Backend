@@ -120,6 +120,32 @@ public class AiBackendClient {
         }
     }
 
+    public ResponseEntity<byte[]> downloadFlModel(String pathClientId) {
+        try {
+            return restClient.get()
+                .uri(aiUri("/clients/" + encodePathSegment(pathClientId) + "/fl-model"))
+                .exchange((request, response) -> {
+                    byte[] payload = StreamUtils.copyToByteArray(response.getBody());
+                    ResponseEntity.BodyBuilder builder = ResponseEntity
+                        .status(response.getStatusCode())
+                        .contentType(response.getHeaders().getContentType() == null
+                            ? MediaType.APPLICATION_OCTET_STREAM
+                            : response.getHeaders().getContentType());
+
+                    copyHeader(response.getHeaders(), builder, HttpHeaders.CONTENT_DISPOSITION);
+                    response.getHeaders().forEach((name, values) -> {
+                        if (name.toLowerCase(java.util.Locale.ROOT).startsWith("x-fedstock-")) {
+                            values.forEach(value -> builder.header(name, value));
+                        }
+                    });
+
+                    return builder.body(payload);
+                });
+        } catch (RestClientException exception) {
+            throw new BadGatewayException("AI server connection failed.");
+        }
+    }
+
     public ResponseEntity<JsonNode> forwardFlModelBatch(
         String roundId,
         Integer expectedClientCount,
