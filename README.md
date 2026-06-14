@@ -31,7 +31,6 @@ client
 ```
 
 기능별 패키지를 하나의 작은 모듈처럼 관리하고, 각 기능 내부에서 요청 처리, 유스케이스, 도메인 규칙, 기술 구현을 분리합니다.
-자세한 폴더링과 코드 작성 규칙은 [docs/CONVENTION.md](docs/CONVENTION.md)를 확인합니다.
 
 현재 API는 JWT 기반 인증이 적용되어 있으며, 로그인/회원가입을 제외한 실제 비즈니스 API는 Bearer token이 필요합니다.
 
@@ -294,8 +293,6 @@ model_file=@client_CA1_Foods_3.pt
 Spring은 토큰을 확인하고, path/body `client_id` 일치, 등록된 `client_id`, `.pt` 파일 형식, 필수 multipart 필드를 검증합니다.
 `single_client`는 AI 레포의 `/clients/{clientId}/fl-model`로 즉시 전달합니다.
 `all_clients`는 DB 큐에 저장하고 전체 등록 유저 수만큼 같은 `round_id`가 모이면 AI 레포의 `/clients/fl-model/batch`로 한 번에 전달합니다.
-
-상세 데모 명세는 [`docs/ai-proxy-api-spec.md`](/Users/kento/Desktop/Project/fedstock/Fedstock-Backend/docs/ai-proxy-api-spec.md)를 봅니다.
 
 ### S3 저장소 확인
 
