@@ -28,7 +28,7 @@ Fedstock 서비스에서 백엔드는 일반적인 상품/재고 CRUD 서버가 
 | Storage Admin | AWS S3 SDK |
 | Container | Docker, Docker Compose |
 | Build | Gradle Wrapper |
-| 담당자 | 안재현, backend repository 100% |
+| 담당자 | 안재현 100% 수행 |
 
 Architecture:
 
@@ -202,31 +202,4 @@ ai_cluster_assignment_queue
 ai_cluster_assignment_feature_names
 ai_cluster_assignment_feature_importance
 ai_fl_model_queue
-```
-
-## S3 Artifact Admin
-
-S3 API는 서비스 CRUD가 아니라 운영 확인용 admin endpoint입니다.
-Swagger에서 JWT를 넣고 `pw` body를 함께 보내면 `ARTIFACT_BUCKET` 상태를 확인하거나 비울 수 있습니다.
-
-```json
-{
-  "pw": "22"
-}
-```
-
-지원 기능:
-
-- S3 object 목록, 개수, 총 byte 조회
-- versioned bucket의 object version 삭제
-- delete marker 삭제
-
-## Commit Convention
-
-커밋 메시지는 영어 한 줄로 작성하고, scope 괄호는 사용하지 않습니다.
-
-```text
-feat: add ai proxy queue
-fix: handle assigned fl model download
-docs: update backend readme
 ```
