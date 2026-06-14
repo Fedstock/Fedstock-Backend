@@ -1,308 +1,213 @@
 # Fedstock Backend
 
-Fedstock 서비스의 백엔드 API 서버입니다.
-현재 단계는 JWT 인증 후 AI 레포로 요청을 검증/전달하는 프록시 API와 최소 사용자 API만 유지합니다.
+## Overview
 
-## Tech Stack
+Fedstock 서비스에서 백엔드는 일반적인 상품/재고 CRUD 서버가 아니라, 인증된 클라이언트 요청을 검증하고 AI 레포로 전달하는 API 게이트웨이 역할을 담당합니다.
 
-| Category | Stack |
+주요 역할은 다음과 같습니다.
+
+- JWT 기반 회원가입, 로그인, 사용자 인증 처리
+- 클라이언트별 AI 요청의 `clientId`, `scope`, 필수 데이터 검증
+- `single_client` 요청은 AI 서버로 즉시 프록시 전달
+- `all_clients` 요청은 PostgreSQL 큐에 저장한 뒤, 같은 round의 전체 클라이언트 요청이 모이면 AI batch API로 전달
+- AI가 생성한 FL 모델 다운로드 응답을 인증된 클라이언트에게 프록시
+- 운영 확인용 S3 artifact bucket 조회 및 전체 삭제 API 제공
+
+즉, 현재 백엔드는 단순 CRUD보다 **인증, 검증, 큐잉, 배치 전송, AI 연동**에 초점을 둔 서버입니다.
+
+## Tech Stack & Role & Architecture
+
+| Category | Content |
 | --- | --- |
 | Language | Java 21 |
 | Framework | Spring Boot 3.5.14 |
-| Build | Gradle Wrapper |
-| API | Spring Web |
-| Validation | Spring Validation |
 | Database | PostgreSQL |
 | ORM | Spring Data JPA, Hibernate |
-| Security | Spring Security, JWT |
+| Auth | Spring Security, JWT |
+| AI Integration | Spring Web multipart/json proxy |
+| Storage Admin | AWS S3 SDK |
 | Container | Docker, Docker Compose |
-| Test | JUnit 5, Spring Boot Test |
+| Build | Gradle Wrapper |
+| 담당자 | 안재현, backend repository 100% |
 
-## Architecture
-
-이 프로젝트는 **Modular Monolith + Clean Architecture Lite** 구조를 사용합니다.
+Architecture:
 
 ```text
+Modular Monolith + Clean Architecture Lite
+
 client
   -> api
   -> application
-  -> domain
-  <- infrastructure
+  -> infrastructure
+  -> external AI backend / PostgreSQL / S3
 ```
 
-기능별 패키지를 하나의 작은 모듈처럼 관리하고, 각 기능 내부에서 요청 처리, 유스케이스, 도메인 규칙, 기술 구현을 분리합니다.
-
-현재 API는 JWT 기반 인증이 적용되어 있으며, 로그인/회원가입을 제외한 실제 비즈니스 API는 Bearer token이 필요합니다.
-
-## Project Structure
+패키지는 기능 단위로 나누고, 각 기능 안에서 controller, application service, persistence/client 구현을 분리합니다.
 
 ```text
-db
-└── init
-    └── 001_mvp_schema.sql
 src/main/java/com/fedstock/backend
-├── ai
-│   ├── api
-│   │   └── dto
-│   ├── application
-│   └── infrastructure
-├── auth
-│   ├── api
-│   │   └── dto
-│   ├── application
-│   └── infrastructure
-├── main
-│   ├── api
-│   ├── config
-│   └── error
-└── v1
-    └── auth
-        └── api
+├── admin/s3        # S3 artifact bucket admin API
+├── ai              # AI proxy, queue, batch forwarding
+├── auth            # JWT auth, user API, security
+├── main            # health, config, global error handling
+└── v1/auth         # logout compatibility endpoint
 ```
 
-## Database Schema
+## Environment Variables
 
-PostgreSQL 초기 스키마와 테스트 데이터는 `db/init/001_mvp_schema.sql`에 있습니다.
-Docker Compose의 PostgreSQL 컨테이너는 이 폴더를 `/docker-entrypoint-initdb.d`로 마운트합니다.
-
-주의: PostgreSQL 공식 이미지의 init SQL은 DB 볼륨이 처음 만들어질 때만 실행됩니다.
-이미 `postgres-data` 볼륨이 있는 상태에서 스키마를 다시 먹이려면 아래처럼 볼륨까지 삭제한 뒤 다시 실행합니다.
-
-```bash
-./run.sh clean
-./run.sh up
-```
-
-현재 MVP 테이블:
-
-```text
-users
-```
-
-샘플 계정:
-
-```text
-email: owner@example.com
-storeId: CA_1_FOODS_3
-password: password12
-```
-
-## Environment
-
-로컬 실행 기본값은 `.env.example`과 같습니다.
-
-```text
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=fedstock
-DB_USERNAME=fedstock
-DB_PASSWORD=fedstock
-AI_BACKEND_URL=http://localhost:8000
-ARTIFACT_BUCKET=
-S3_ADMIN_PASSWORD=22
-```
-
-Spring profile:
-
-| Profile | Purpose |
+| Name | Role |
 | --- | --- |
-| `local` | 로컬 개발 |
-| `docker` | Docker Compose 실행 |
-| `prod` | ECS/RDS 운영 실행 |
+| `DB_HOST` | PostgreSQL host |
+| `DB_PORT` | PostgreSQL port |
+| `DB_NAME` | PostgreSQL database name |
+| `DB_USERNAME` | PostgreSQL user |
+| `DB_PASSWORD` | PostgreSQL password |
+| `JWT_SECRET` | JWT signing secret, required in `prod` |
+| `AI_BACKEND_URL` | Downstream AI backend base URL |
+| `ARTIFACT_BUCKET` | S3 artifact bucket name |
+| `S3_ADMIN_PASSWORD` | Swagger-callable S3 admin API password |
+| `AWS_REGION` | AWS S3 region |
 
-운영 ECS 환경은 아래 값을 컨테이너 환경변수 또는 secret으로 주입합니다.
+Local defaults are defined in `.env.example` and `src/main/resources/application.yml`.
 
-```text
-SPRING_PROFILES_ACTIVE=prod
-AWS_REGION=ap-northeast-2
-ARTIFACT_BUCKET=<artifact-bucket>
-S3_ADMIN_PASSWORD=<secret>
-DB_HOST=<rds-endpoint>
-DB_PORT=5432
-DB_NAME=app
-DB_USERNAME=app
-DB_PASSWORD=<secret>
-AI_BACKEND_URL=http://<alb-dns>/ai
-```
+## Run, Command
 
-## Run with Docker
+Run with Docker Compose:
 
 ```bash
 ./run.sh up
 ```
 
-백그라운드 실행:
+Run in background:
 
 ```bash
 ./run.sh up-bg
 ```
 
-종료:
+Stop containers:
 
 ```bash
 ./run.sh down
 ```
 
-PostgreSQL 데이터까지 삭제:
+Reset PostgreSQL volume and re-run init SQL:
 
 ```bash
 ./run.sh clean
+./run.sh up
 ```
 
-## Run Locally
-
-JDK 21과 PostgreSQL이 필요합니다.
+Run locally with JDK 21:
 
 ```bash
 ./gradlew bootRun
 ```
 
-Docker Compose로 DB만 먼저 실행하고 애플리케이션은 로컬에서 실행할 수도 있습니다.
+Run PostgreSQL only, then start the app locally:
 
 ```bash
 ./run.sh db
 ./run.sh app
 ```
 
-## Health Check
+Health check:
 
 ```bash
 curl http://localhost:8080/health
 ```
 
-## API Docs
-
-서버 실행 후 Swagger UI에서 현재 API를 확인합니다.
+Swagger UI:
 
 ```text
 http://localhost:8080/swagger-ui.html
 ```
 
-OpenAPI JSON:
-
-```text
-http://localhost:8080/v3/api-docs
-```
-
 ## API
 
-현재 공개/보호 API는 아래 7개만 유지합니다.
+현재 API는 일반 CRUD가 아니라 인증, AI 프록시, 큐 기반 batch 전송, S3 운영 확인에 맞춰져 있습니다.
+
+| Method | Path | Auth | Role |
+| --- | --- | --- | --- |
+| `GET` | `/health` | Public | 서버 상태 확인 |
+| `POST` | `/api/auth/signup` | Public | 사용자 등록 |
+| `POST` | `/api/auth/login` | Public | JWT 발급 |
+| `GET` | `/api/users/me` | Bearer token | 현재 사용자 확인 |
+| `POST` | `/api/auth/logout` | Bearer token | 로그아웃 호환 API |
+| `POST` | `/api/ai/clients/cluster-assignment` | Bearer token | 클러스터 배정 요청 검증 및 AI 전달 |
+| `POST` | `/api/ai/clients/{clientId}/fl-model` | Bearer token | 클라이언트 FL 모델 업로드 검증 및 AI 전달 |
+| `GET` | `/api/ai/clients/{clientId}/fl-model` | Bearer token | AI가 생성한 할당 FL 모델 다운로드 프록시 |
+| `POST` | `/api/admin/s3/objects` | Bearer token + password body | S3 artifact bucket 객체 목록 조회 |
+| `POST` | `/api/admin/s3/objects/delete-all` | Bearer token + password body | S3 object version, delete marker 포함 전체 삭제 |
+
+## AI Proxy Flow
+
+### `single_client`
+
+`single_client`는 클라이언트 하나의 요청을 검증한 뒤 AI 서버로 즉시 전달합니다.
 
 ```text
-1. GET  /health
-2. POST /api/auth/signup
-3. POST /api/auth/login
-4. GET  /api/users/me
-5. POST /api/auth/logout
-6. POST /api/ai/clients/cluster-assignment
-7. POST /api/ai/clients/{clientId}/fl-model
-8. POST /api/admin/s3/objects
-9. POST /api/admin/s3/objects/delete-all
+client
+  -> Spring Backend
+  -> validate JWT, clientId, scope, payload
+  -> AI Backend
 ```
 
-`/api/auth/signup`, `/api/auth/login`은 인증 없이 호출합니다.
-나머지 보호 API는 `Authorization: Bearer <accessToken>` 헤더가 필요합니다.
-
-### 회원가입
-
-```http
-POST /api/auth/signup
-Content-Type: application/json
-```
-
-```json
-{
-  "email": "junu120707@gachon.ac.kr",
-  "storeId": "junu120707@gachon.ac.kr",
-  "username": "junu120707@gachon.ac.kr",
-  "name": "CA_1_FOODS_3",
-  "password": "password123"
-}
-```
-
-### 로그인
-
-```http
-POST /api/auth/login
-Content-Type: application/json
-```
-
-```json
-{
-  "email": "junu120707@gachon.ac.kr",
-  "storeId": "junu120707@gachon.ac.kr",
-  "username": "junu120707@gachon.ac.kr",
-  "password": "password123"
-}
-```
-
-### 내 정보
-
-```http
-GET /api/users/me
-Authorization: Bearer <accessToken>
-```
-
-### 로그아웃
-
-```http
-POST /api/auth/logout
-Authorization: Bearer <accessToken>
-```
-
-### 초기 클러스터링 배정
-
-```http
-POST /api/ai/clients/cluster-assignment
-Authorization: Bearer <accessToken>
-Content-Type: application/json
-```
-
-```json
-{
-  "scope": "single_client",
-  "roundId": "initial-clustering-20260613-001",
-  "clientId": "CA1_Foods_3",
-  "sampleCount": 13004,
-  "featureNames": ["rolling_mean_28", "rolling_mean_7", "lag_7"],
-  "featureImportance": [0.1421, 0.1318, 0.0974],
-  "expectedClientCount": null
-}
-```
-
-Spring은 토큰을 확인하고, `scope`, 필수값, feature vector 길이, 등록된 `clientId`를 검증합니다.
-`single_client`는 AI 레포의 `/clients/cluster-assignment`로 즉시 전달합니다.
-`all_clients`는 DB 큐에 저장하고 전체 등록 유저 수만큼 같은 `roundId`가 모이면 AI 레포의 `/clients/cluster-assignment/batch`로 한 번에 전달합니다.
-
-### 할당 클러스터 FL 모델 다운로드
-
-```http
-POST /api/ai/clients/{clientId}/fl-model
-Authorization: Bearer <accessToken>
-Content-Type: multipart/form-data
-```
+사용되는 downstream AI API:
 
 ```text
-client_id=CA1_Foods_3
-scope=single_client
-round_id=fl-sync-20260613-001
-sample_weight=13004
-model_file=@client_CA1_Foods_3.pt
+POST {AI_BACKEND_URL}/clients/cluster-assignment
+POST {AI_BACKEND_URL}/clients/{clientId}/fl-model
+GET  {AI_BACKEND_URL}/clients/{clientId}/fl-model
 ```
 
-Spring은 토큰을 확인하고, path/body `client_id` 일치, 등록된 `client_id`, `.pt` 파일 형식, 필수 multipart 필드를 검증합니다.
-`single_client`는 AI 레포의 `/clients/{clientId}/fl-model`로 즉시 전달합니다.
-`all_clients`는 DB 큐에 저장하고 전체 등록 유저 수만큼 같은 `round_id`가 모이면 AI 레포의 `/clients/fl-model/batch`로 한 번에 전달합니다.
+### `all_clients`
 
-### S3 저장소 확인
+`all_clients`는 바로 AI로 보내지 않고 PostgreSQL에 큐로 저장합니다.
+같은 `roundId` 또는 `round_id`에 대해 등록된 전체 클라이언트 요청이 모이면 Spring이 AI batch API를 한 번 호출합니다.
 
-Swagger에서 JWT를 넣고 아래 body로 호출합니다. 로컬 기본값은 `22`이고, 운영은 `S3_ADMIN_PASSWORD` 환경변수 값과 일치해야 합니다.
-
-```http
-POST /api/admin/s3/objects
-Authorization: Bearer <accessToken>
-Content-Type: application/json
+```text
+client A -> Spring -> DB queue
+client B -> Spring -> DB queue
+client C -> Spring -> DB queue
+                    -> all clients ready
+                    -> AI batch API
 ```
+
+사용되는 downstream AI batch API:
+
+```text
+POST {AI_BACKEND_URL}/clients/cluster-assignment/batch
+POST {AI_BACKEND_URL}/clients/fl-model/batch
+```
+
+## 개발 특징 -> DB Queue Batch
+
+이 레포의 핵심 구현은 CRUD가 아니라 DB queue 기반 batch 제어입니다.
+
+| Feature | Implementation |
+| --- | --- |
+| 클러스터 배정 all_clients | `ai_cluster_assignment_queue`에 client별 payload 저장 |
+| FL 모델 all_clients | `ai_fl_model_queue`에 `.pt` multipart 파일을 byte 배열로 저장 |
+| Round 상태 | `ai_sync_rounds`에서 round별 기대 client 수, 상태, 에러, 전달 시점 관리 |
+| 중복 제출 | 같은 round/client 요청은 최신 payload로 갱신 |
+| 대기 응답 | 전체 client가 모이기 전에는 `202 Accepted`와 queue 상태 반환 |
+| batch 전송 | 전체 client가 모이면 Spring이 AI batch endpoint로 한 번에 전달 |
+
+주요 테이블:
+
+```text
+users
+ai_sync_rounds
+ai_cluster_assignment_queue
+ai_cluster_assignment_feature_names
+ai_cluster_assignment_feature_importance
+ai_fl_model_queue
+```
+
+## S3 Artifact Admin
+
+S3 API는 서비스 CRUD가 아니라 운영 확인용 admin endpoint입니다.
+Swagger에서 JWT를 넣고 `pw` body를 함께 보내면 `ARTIFACT_BUCKET` 상태를 확인하거나 비울 수 있습니다.
 
 ```json
 {
@@ -310,33 +215,18 @@ Content-Type: application/json
 }
 ```
 
-응답은 `ARTIFACT_BUCKET`의 객체 목록, 개수, 총 byte 크기를 반환합니다.
+지원 기능:
 
-### S3 저장소 전체 삭제
-
-`ARTIFACT_BUCKET` 안의 object version과 delete marker까지 삭제합니다.
-
-```http
-POST /api/admin/s3/objects/delete-all
-Authorization: Bearer <accessToken>
-Content-Type: application/json
-```
-
-```json
-{
-  "pw": "22"
-}
-```
-
-운영 IAM에는 최소 `s3:ListBucket`, `s3:ListBucketVersions`, `s3:DeleteObject`, `s3:DeleteObjectVersion` 권한이 필요합니다.
+- S3 object 목록, 개수, 총 byte 조회
+- versioned bucket의 object version 삭제
+- delete marker 삭제
 
 ## Commit Convention
 
-커밋 메시지는 영어 한 줄로 간결하게 작성합니다.
-scope 괄호는 사용하지 않습니다.
+커밋 메시지는 영어 한 줄로 작성하고, scope 괄호는 사용하지 않습니다.
 
 ```text
-feat: add demo crud api
-fix: handle demo not found
+feat: add ai proxy queue
+fix: handle assigned fl model download
 docs: update backend readme
 ```
